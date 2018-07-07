@@ -1,0 +1,272 @@
+---
+title: "Section 4 Code"
+author: "150B/355B Introduction to Machine Learning"
+date: "2/2/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1. Setting up New York Times Annotated Corpus
+
+Today, we are going to continue analyzing the New York Times Annonated Corpus. From the coursework site please download `NYT.RData` and load the file.
+
+
+```{r}
+rm(list=ls())
+setwd('/Users/haeminjee/Dropbox/150B Machine Learning/04_Section')
+load("NYT.RData")
+```
+
+This loads a list, `nyt_list`, with the following components:
+- train : the document term matrix for the training set
+- train_label: an indicator equal to 1 if the story comes from the national desk for each document in the training set
+- test: the document term matrix for the test set.  
+- test_label: an indicator equal to 1 if the story comes from the national desk for each document in the test set
+
+We will work with `train` and `train_label` to build our prediction models. We will use the `test` set to test the fit of our model.  
+
+Let's put these components in individual objects.
+
+```{r}
+train<- nyt_list[[1]]
+train_label<- nyt_list[[2]]
+test<- nyt_list[[3]]
+test_label<- nyt_list[[4]]
+```
+
+## 1. Fit LASSO regression  
+
+### 1.1 
+Print the dimensions of the train and test set.
+
+```{r}
+
+dim(train)
+dim(test)
+```
+
+
+### 1.2 
+We are going to use the glmnet library to fit the LASSO regression. Run the code below to install and load the required library.
+
+```{r}
+#install.packages('glmnet')
+library(glmnet)
+```
+
+
+### 1.3 
+The syntax for the glmnet model is as follows:
+`lasso <- glmnet(x = train, y = train_label)`
+
+This defaults to linear regression. To do logistic regression you can fit the same model, but add
+`lasso_logist <- glmnet(x = train, y = train_label, family = 'binomial')`
+
+Fit a LASSO linear regression.
+
+```{r}
+
+lasso <- glmnet(x = train, y = train_label)
+
+```
+
+
+### 1.4 
+
+The LASSO function automatically fits the model for several values of lambda. At each value of lambda in the trial, glmnet() finds the coefficients that minimize the sum of squared residuals plus the LASSO penalty.
+
+Let's look at the output from glmnet()
+
+```{r}
+names(lasso) #return all output stored in "lasso" (our glmnet() object)
+```
+
+Some key output that we might use
+
+1) lambda: all lambda values that glmnet() attempted
+```{r}
+head(lasso$lambda) 
+length(lasso$lambda) #glmnet() tries 100 lambda candidate values
+```
+
+2) a0: a sequence of intercepts in the model at each lambda
+```{r}
+head(lasso$a0)  
+```
+
+3) beta: a matrix of beta coefficients. Each row corresponds to one                      feature in the model; each column corresponds to one lambda in trial
+```{r}
+class(lasso$beta) 
+dim(lasso$beta)
+
+# Q1: What does this code mean?
+lasso$beta[1:5,1:10] 
+
+# Q2: Why are there missing values in each column in the output?
+```
+
+4) df: the number of nonzero coefficients for each candidate lambda
+```{r}
+#Q3: How many elements are there in df in this case?
+lasso$df
+```
+
+5) nobs: the number of observations in the regression
+```{r}
+lasso$nobs
+#Q4: Where does this number come from?
+```
+
+### 1.5 
+Plot the number of non-zero coefficients at each lambda versus `lasso$lambda`. What generally happens as lambda increases? Why?
+
+```{r}
+
+plot(x=lasso$lambda, y=lasso$df)
+
+```
+
+```{r}
+# sum absolute values of the betas and plot against the value of lambda
+sum_beta <- colSums(abs(lasso$beta))
+plot(sum_beta ~ lasso$lambda)
+```
+
+
+## 2. Finding Lambda
+
+### 2.1
+
+We're now ready to devise a method for selecting the appropriate value of lambda. First we need to define our loss function. To do this, write a function calculate the mean squared error:
+
+```{r}
+mse <- function(preds, data){  #data is human-coded label, preds are model predictions
+  diff <- preds - data
+  diff_squared<- diff^2
+  return(mean(diff_squared))
+}
+```
+
+### 2.2
+
+Now, let's calculate the MSE for the in-sample fit from the LASSO regression. 
+
+1. Make in-sample predictions using LASSO for each value of lambda. 
+2. Then calculate the MSE across those predictions. 
+3. Finally, make a plot of the MSE values against lambda values.
+
+```{r}
+# make predictions for each value of lamda
+    # `lasso` is the lasso regression
+    # `newx` are the matrix of predictors you use to predict the label
+#newdata (dataframe)
+#newx: matrix
+
+pred_lasso <- predict(lasso, newx = train) 
+
+class(pred_lasso) # return a matrix
+dim(pred_lasso) # row = prediction for each doc; col = prediction at each lambda
+pred_lasso[1:5,1:5] # look at the predictions for docs 1-5 at lambdas 1-5
+
+# We can also look at the predictions at certain values of lambda
+head(predict(lasso, newx = train, s=0.05 ))
+```
+
+
+
+```{r}
+# calculate MSE for each lamda value
+
+# Q5: Can you walk me through the for-loop below?
+store_mse_in <- c()
+for(z in 1:ncol(pred_lasso)){
+  predictions <- pred_lasso[,z] 
+  store_mse_in[z] <- mse(predictions, train_label)
+}
+
+# plot MSE x lamda
+plot(store_mse_in~lasso$lambda)
+```
+
+Q6: Recalling that smaller MSE is better, what does the insample fit tell us is the optimal lambda value? How much are we penalizing the model then?
+
+
+
+## 3. Cross Validation
+
+### 3.1 
+
+We want to devise a way to do cross validation. With LASSO we will have a canned method for doing the cross validation. 
+
+(I provide instructions below on how to manually perform cross validation---helpful for applying the procedure to many other methods.)
+
+To perform cross validation with glmnet we use cv.glmnet
+
+```{r}
+?cv.glmnet  #Help file to see the arguments
+
+lasso_cv<- cv.glmnet(x = train, y = train_label)
+```
+
+You can specify the loss function (with `type.measure =` ). For example, for classification you might pick accuracy.  The default is MSE. 
+
+`nfolds` allows you to set the number of folds used for cross validation. The default is 10
+
+
+### 3.2
+Let's look at the output of cv.glmnet()
+
+Try plotting the cv.glmnet object you created. This shows how the Mean-Squared Error for the cross validated predictions changes across different values of lambda.
+
+```{r}
+plot(lasso_cv)
+```
+
+
+```{r}
+names(lasso_cv) # Look at the output
+```
+
+- `obj$lambda.min`: lambdas that lead to the smallest mse
+- `obj$lambda`: all lambdas the LASSO regression attempted
+
+```{r}
+lasso_cv$lambda.min
+lasso_cv$lambda
+```
+
+
+### 3.3
+
+The plot object gave us the in sample fit because we are still only using the training data.  Let's see how it compares to the out-of-sample fit.
+
+To do this, make predictions for the test data using each value of lambda from cv.glmnet
+
+```{r}
+# Q7: Can you walk me through the for-loop below?
+out_of_sample<- c()
+for(z in 1:length(lasso_cv$lambda)){
+  preds1<- predict(lasso_cv, newx = test, s= lasso_cv$lambda[z])
+  out_of_sample[z]<- mse(preds1, test_label)
+}
+```
+
+
+
+### 3.4
+
+Plot the out-of-sample mse against the estimated mse from cross validation (which you can access with `obj$cvm`).
+
+Q8: How well did cross validation do in selecting the appropriate value of lambda?
+
+```{r}
+plot(lasso_cv$cvm ~ lasso_cv$lambda, type="l", lty=1) 
+lines(out_of_sample ~ lasso_cv$lambda, lty=2)
+abline(v=lasso_cv$lambda.min, col="red") #verticle line at the chosen lambda from CV
+#abline(h=min(out_of_sample),col="blue")
+legend("topright", legend=c("in-sample", "out-of-sample"), lty=1:2)
+```
+
