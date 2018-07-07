@@ -1,0 +1,330 @@
+---
+title: "Section 6 Code"
+author: "150B/355B Introduction to Machine Learning"
+date: "2/16/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Section 1: Text Preprocessing
+
+First let's load our required packages.
+
+```{r}
+rm(list=ls())
+setwd("/Users/haeminjee/Dropbox/150B Machine Learning/06_Section")
+library(tm) # Framework for text mining
+library(RTextTools) # a machine learning package for text classification written in R
+library(SnowballC) # for stemming
+```
+
+A corpus is a collection of texts, usually stored electronically, and from which we perform our analysis. A corpus might be a collection of news articles from Reuters or the published works of Shakespeare. 
+
+Within each corpus we will have separate articles, stories, volumes, each treated as a separate entity or record. Each unit is called a "document."
+
+For this unit, we will be using a section of Machiavelli's Prince as our corpus. Since The Prince is a monograph, we have already "chunked" the text, so that each short paragraph or "chunk" is considered a "document."
+
+### 1.1 Corpus Sources and Readers
+
+The `tm` package supports a variety of sources and formats. Run the code below to see what it includes
+
+```{r}
+getSources()
+getReaders()
+```
+
+Here we'll be reading documents from a csv file. Each row being a document, and columns for text and metadata (information about each document). This is the easiest option if you have metadata.
+
+```{r}
+docs.df <-read.csv("mach.csv", header=TRUE) #read in CSV file
+# "Corpus" converts 188 documents into 188 lists, each list has 2 elements: the document's metadata and its text
+docs <- Corpus(VectorSource(docs.df$text))
+docs
+```
+
+Once we have the corpus, we can inspect the documents using inspect()
+
+```{r}
+# see the 16th document
+inspect(docs[16])
+```
+
+And see the text using the `as.chracter`
+
+```{r}
+ # see content for 16th document
+as.character(docs[[16]])
+```
+
+### 1.2 Preprocessing functions 
+
+Many text analysis applications follow a similar 'recipe' for preprecessing, involving:
+
+1. Tokenizing the text to unigrams (or bigrams, or trigrams)
+2. Converting all characters to lowercase
+3. Removing punctuation
+4. Removing numbers
+5. Removing Stop Words, including custom stop words
+6. "Stemming" words, or lemmitization. There are several stemming alogrithms. Porter is the most popular.
+7. Creating a Document-Term Matrix
+8. Weighting features (weight some words more than other words)
+9. Removing Sparse Terms
+
+See what transformations are available TM package.
+
+```{r}
+getTransformations()
+```
+
+The function `tm_map()` is used to apply one of these transformations across all documents.
+
+```{r}
+as.character(docs[[16]]) #before
+docs <- tm_map(docs, content_transformer(tolower)) # convert all text to lower case
+as.character(docs[[16]]) #after
+```
+
+Using `tm_map`, apply the following transformations. **Hint**: You may have to look up the help files for these functions.
+1. removePunctuation
+2. removeNumbers
+3. removeWords (see help file to remove stop words)
+4. stripWhitespace
+5. stemDocument
+
+```{r}
+# remove Puncturation
+docs <- tm_map(docs, removePunctuation) 
+as.character(docs[[16]])
+
+# remove Numbers
+docs <- tm_map(docs, removeNumbers) 
+as.character(docs[[16]])
+
+# remove common words
+stopwords("english") # all English stopwords in tm package
+docs <- tm_map(docs, removeWords, stopwords("english")) 
+as.character(docs[[16]])
+
+# remove own stop words
+docs <- tm_map(docs, removeWords, c("prince")) 
+as.character(docs[[16]])
+
+# strip white space
+docs <- tm_map(docs, stripWhitespace) 
+as.character(docs[[16]])
+
+# stem the document
+docs <- tm_map(docs, stemDocument) 
+as.character(docs[[16]])
+```
+
+### 1.3 Creating a DTM
+
+A document term matrix is simply a matrix with documents as the rows and terms as the columns and a count of the frequency of words as the cells of the matrix. We use `DocumentTermMatrix()` to create the matrix:
+```{r}
+dtm <- DocumentTermMatrix(docs)
+dtm
+```
+
+`tm` also lets us convert a corpus to a DTM while completing the pre-processing steps in one step.
+
+```{r}
+dtm <- DocumentTermMatrix(docs,
+           control = list(stopwords = TRUE,
+                          tolower = TRUE,
+                          removeNumbers = TRUE,
+                          removePunctuation = TRUE,
+                          stemming=TRUE))
+```
+
+Bonus: rTextTools
+FYI: We can also use `rTextTools` to go directly from dataframe to DTM, completing pre-processing stems automatically.
+```{r}
+# Convert to DTM
+dtm2 <- create_matrix(docs.df$text, language="english", removeNumbers=TRUE,
+                       stemWords=TRUE, toLower = TRUE, removePunctuation = TRUE)
+class(dtm2) #get the type of dtm2
+```
+
+### 1.4 Exploring the DTM
+
+Let's look at the structure of our DTM. Print the dimensions of the DTM. How many documents do we have? How many terms?
+```{r}
+# A. Dimensions
+dim(dtm) #how do you interpret the output?
+
+# B. Frequencies of word: the TM package has lots of useful functions to help you explore common words and  associations
+findFreqTerms(dtm, lowfreq=100) # words that appear at least 100 times
+findAssocs(dtm, "war", 0.3) # Which words correlate with "war"?
+
+# C. Remove sparse terms:
+# Somtimes we want to remove sparse terms and thus inrease efficency. Look up the help file for the function `removeSparseTerms`. Using this function, create an objected called `dtm.s` that contains only terms with <.9 sparsity (meaning they appear in more than 10% of documents).
+dtm.s <- removeSparseTerms(dtm,.9) #2nd argument is the maximal allowed sparsity
+dtm # 2356 terms
+dtm.s # 135 terms
+
+# D. (bonus) Wordclouds showing the most common terms
+install.packages("wordcloud")
+library(wordcloud)
+freq <- sort(colSums(as.matrix(dtm)),decreasing=TRUE) #sort words by frequency in decreasing order
+head(freq)
+set.seed(123)
+wordcloud(names(freq), freq, max.words=100, colors=brewer.pal(6,"Dark2"))
+
+# E. Convert the dtm into a dataframe
+dtm <- as.data.frame(as.matrix(dtm))
+```
+
+
+##Section 2: Sentiment analysis using Dictionary
+
+Comparing Songs on the Thriller Album
+
+To demonstrate sentiment analysis, we're going to explore lyrics from Michael Jackson's Thriller album. 
+Road the code below to get started.
+
+```{r}
+rm(list=ls())
+#setwd('~YOUR/PATH/HERE/06_Preprocessing')
+library(tm)
+
+thriller <- read.csv("thriller.csv")
+```
+
+### 2.1 Pre-processing
+
+First we must preprocess the corpus. Create a document-term matrix from the `Lyrics` column of the `thriller` data frame. Complete the following preprocessing steps:
+- convert to lower
+- remove stop words
+- remove numbers
+- remove punctuation.
+
+**Think**: Why is stemming inappropriate for this application?
+
+```{r}
+# preprocess and create DTM
+docs <- Corpus(VectorSource(thriller$Lyrics))
+
+dtm <- DocumentTermMatrix(docs,
+           control = list(tolower = TRUE,
+                          removeNumbers = TRUE,
+                          removePunctuation = TRUE,
+                          stopwords = TRUE
+                         ))
+
+dtm <- as.data.frame(as.matrix(dtm))
+```
+
+### 2.2 Setting up the sentiment dictionary
+#### 2.2.1
+We're going to use sentiment dictionaries from the `tidytext` package. Install and load the package.
+
+```{r}
+install.packages("tidytext") # only install a package once!
+library(tidytext)
+```
+ 
+#### 2.2.2 
+Using the `get_sentiments` function, load the "bing" dictionary and store it in an object called `sent`. 
+
+```{r}
+sent <- get_sentiments("bing")
+head(sent)
+table(sent$sentiment,exclude=NULL) #words are either positive or negative
+```
+
+#### 2.2.3
+Add a column to `sent` called `score`. This column should hold a "1" for positive words and "-1" for negative words.
+
+```{r}
+sent$score <- ifelse(sent$sentiment=="positive", 1, -1)
+```
+
+
+### 2.3 Scoring the Thriller album
+#### 2.3.1
+We're now ready to score each song. 
+
+(**NB**: There are probably many ways to program a script that performs this task. If you can think of a more elegant way, go for it!)
+
+First, we'll create a dataframe that holds all the words in our dtm along with their sentiment score.
+
+```{r}
+# get all the words in our dtm and put it in a dataframe
+words = data.frame(word = colnames(dtm))
+head(words)
+
+# get their sentiment scores
+words <- merge(words, sent, all.x = T) #if one word shows up in words but not in sent (dictionary), fill in "NA" as the sentiment score of that word
+head(words)
+
+# replace NAs with 0s -> treat them as neutral words
+words$score[is.na(words$score)] <- 0
+head(words) #"words$score" now includes the weight for each unique word in our documents in this application
+```
+
+#### 2.3.2
+We can now use matrix algebra (!!) to multiply our dtm by the scoring vector. This will return to us a score for each document (i.e., song).
+
+```{r}
+# calculate documents scores with matrix algebra! => numerator in the sentiment score
+scores <- as.matrix(dtm) %*% words$score
+
+# put it in the original documents data frame
+thriller$sentiment <- scores
+thriller[,c("Song","sentiment")]
+```
+
+Which song is happiest? Go listen to the song and see if you agree.
+
+
+### 2.4. Altogether: Making your function for sentiment analysis!
+
+#### 2.4.1 
+Using the code we wrote above, make a function that accepts 1) a vector of texts, and 2) a sentiment dictionary (i.e. a data frame with words and scores), and returns a vector of sentiment scores for each text
+
+```{r}
+sentiment_score <- function(texts, sent_dict){
+  
+  # Step 1: preprocess texts
+   # YOUR CODE HERE
+  
+  #Step 2: get all the words in our dtm and put it in a dataframe
+   # YOUR CODE HERE
+  
+  #Step 3: get their sentiment scores
+   # YOUR CODE HERE
+  
+  #Step 4: replace NAs with 0s
+   # YOUR CODE HERE
+  
+  #Step 5: calculate documents scores with matrix algebra!
+   # YOUR CODE HERE
+  
+  return(scores)
+  
+}
+
+# uncomment the line below to test it out!
+# sentiment_score(thriller$Lyrics, sent)
+```
+
+####  2.4.2 
+
+Using the function you wrote above, score the Thriller album with the "afinn" dictionary. Compare the scores across the two different dictionaries.
+
+```{r}
+# first load the dictionary
+afinn <- get_sentiments("afinn")
+head(afinn)
+
+# then run the function
+sentiment_score(thriller$Lyrics, afinn)
+sentiment_score(thriller$Lyrics, sent)
+```
+
+
+
