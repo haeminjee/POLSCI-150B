@@ -11,6 +11,6 @@ In achieving this ultimate goal, students will also:
 3) Be introduced to substantive problems and apply the techniques from the course.
 4) Be able to learn independently and tackle more advanced topics and challenges in data analysis.
 
-The course materials were developed with Tongtong Zhang (ttzhang7@stanford.edu) and Rochelle Terman (rterman@stanford.edu). 
+The course materials were developed with Tongtong Zhang (ttzhang7@stanford.edu) and Rochelle Terman (rterman@uchicago.edu). 
 
 ## Please note the course materials are still in development and will be changing. 
