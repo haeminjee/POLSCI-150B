@@ -1,0 +1,175 @@
+---
+title: " TA Section 2 Code Exercise"
+author: "150B/355B Introduction to Machine Learning"
+date: "1/19/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Question 1 Time for Change Model
+
+## 1. Setting up the time for a change model
+
+Download and create in object from the .csv file ``TimeChange.csv" into your computer. 
+
+```{r}
+rm(list=ls())
+#Change to your directory for this section
+setwd('~/Dropbox (IPL)/150B Machine Learning/02_Section') 
+d<-read.csv("TimeChange.csv")
+
+#Bivariate model of VoteShare on Incumbency Approval
+bivariate <- lm(IncumbentVoteShare~Incumbent_Net_Approval, data = d)
+bivariate$coefficients
+```
+
+## 2. Fitting Multivariate Regression
+
+```{r}
+bivariate <- lm(IncumbentVoteShare~Incumbent_Net_Approval, data = d)
+multivariate <- lm(IncumbentVoteShare~Incumbent_Net_Approval + Q1_GDP_Growth + 
+                     Q2_GDP_Growth + Incumbent_Party_Two_Terms, data = d)
+
+summary(bivariate)
+summary(multivariate)
+```
+
+
+## 3. Multivariate Prediction
+
+### 3.1
+
+Write a prediction function using the output from the multivariate regression.
+```{r}
+# YOUR CODE HERE
+```
+
+### 3.2 
+
+Compare it to fitted values.
+```{r}
+# YOUR CODE HERE
+```
+
+
+## 4. Linear Algebra in R ###
+
+### 4.1
+
+Create three vectors in R.  Make two of the vectors of length 4 and one vector of length 5.
+- vector 1 should equal (1, 2, 3, 4)
+- vector 2 should equal (3, 4, 5, 6)
+- vector 3 should equal (7, 8, 9, 10, 11)
+
+```{r}
+# YOUR CODE HERE
+```
+### 4.2
+
+Confirm the length of the vectors using the length function.
+
+```{r}
+# YOUR CODE HERE
+```
+
+### 4.3
+
+Now, we're going to use `%*%` to take their inner product. First, take the inner product of vector 1 and vector 2. Second, write the inner product of vector 1 and vector 3. What do you notice? 
+
+```{r}
+# YOUR CODE HERE
+```
+
+## 5. Vector based regression
+
+### 5.1 
+
+Write a function to predict from a multivariate regression using vectors.
+
+```{r}
+# YOUR CODE HERE
+```
+
+### 5.2
+
+Compare the predicted values between you two predict functions (one with linear algebra, one without) and from the lm ("canned") model.
+```{r}
+# YOUR CODE HERE
+```
+
+
+## Question 2 Predicting Iraq Vote using LPM
+
+We're going to analyze the Senate's vote on the Iraq war authorization.We'll find this data set in the PSCL package, which is called `pscl` in R.
+
+To get started, we need to install and load the library. Execute the following code to install pscl.
+
+```{r}
+rm(list=ls())
+setwd('~/Dropbox (IPL)/150B Machine Learning/02_Section')
+#install.package('pscl')
+
+library(pscl)
+data(iraqVote)
+```
+
+Checking the column names of the data set we have:
+- y : The vote on the Iraq war authorization
+- state.abb : Name of the senator's state
+- name : senator's name
+- rep : an indicator = TRUE if the senator is a Republican, FALSE if not a Republican
+- state.name : the name of the senator's state
+- gorevote: the share of the two party vote cast for Al Gore in the 2000 election
+
+
+### 1 
+Let's fit a linear probability model. Using a linear regression, regress the vote against `rep` and `gorevote`.
+
+```{r}
+fit<-lm(y~rep+gorevote, data=iraqVote) #fit linear model and print result
+summary(fit)
+fit$coefficients #extract the vector of coefficients
+```
+
+### 2
+
+Using the regression, calculate predicted probabilities for each of the observations.  You can do this by creating an appropriate matrix or with a for loop.
+
+```{r}
+# create matrix of predictors
+indep.matrix <- cbind(1, iraqVote$rep, iraqVote$gorevote)
+
+# multiply by coefficients
+pred_prob_lm<- c(indep.matrix%*%fit$coef) 
+
+# we can also take the fitted values from the model
+fitted_lm <- fit$fitted.values
+
+# Are they the same?
+pred_prob_lm[1:10]
+fitted_lm [1:10]
+```
+
+### 3
+
+Summarize the predicted probabilities. What do you notice about the predicted probabilities? (in particular, the maximum and minimum values)
+```{r}
+# YOUR CODE HERE
+```
+
+### 4
+
+Write a function that takes the predicted probabilities and a threshold, and returns a classification decision. Use that function to classify each senator as Yay or Nay on the Iraq vote.
+```{r}
+# YOUR CODE HERE
+```
+
+### 5
+
+What proportion of senators do you classify as a likely Iraq Vote? What proportion of Democrats and Republicans?
+```{r}
+# YOUR CODE HERE
+```
