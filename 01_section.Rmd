@@ -1,0 +1,235 @@
+---
+title: "01_Section"
+author: "Haemin Jee"
+date: "1/11/2018"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Homework Guidelines
+We will be grading you based on: 
+* completeness
+* accuracy
+* Readability of code
+
+*Much of this handout was written by Bobbie Macdonlad with slight modifcations.*
+
+## Writing Good Code
+Why is writing clear and good code important? 
+* messy code can have all sorts of bugs and problems - and it's harder to debug
+* readable code is more conducive to collaboration
+* easier to build upon clean code
+* you want to remember what you did! 
+
+## Variable names
+The first step in readable code is choosing good names for variables (i.e. your constants, vectors, dataframes, et cetera). Typically a variable gets a noun name that reflects what it stores - e.g. `width`, `pollData`, `gender`, `numSims`. 
+
+*In R*, it's common to use `.` or `_` to separate words in variable names, such as `poll_data`, `df_census`, or `num.sims`. 
+
+There are also a few idiomatic one-letter names, such as `i`, `j`, `k` for integer loop counters or `X` and `Y` for independent and dependent variables in a simulation. These are in such wide use that they make very readable code just by familiarity.
+
+## Function names
+If variables names are the nouns, function names are the verbs. Function names should reflect the action they perform (e.g. `rowSums()`, `plotResults()`, `crossValidate()`). Functions that return a T/F are often named starting with "is" or "has" (e.g. `is.integer()`, `is.na()`).
+
+## Whitespace
+*Use whitespace to help separate the logical parts of the code, in much the same way that paragraphs separate groups of sentences.*
+
+Rather than write a block of 20 lines, it's nice to put in blank lines to separate the code into sections that accomplish logical sub-parts of the computation. Each little section of code might have a comment to describe what it accomplishes. Likewise, you can use whitespace to show the logical grouping of elements within a line. Do not run everything together with no spaces. 
+
+<span style="color:red">BAD CODE</span>:
+
+```{r eval=FALSE, error=TRUE}
+#library(ggplot2)
+#library(plyr)
+#library(reshape2)
+
+set.seed(4319)
+n<-1000  # number of observations
+D<-c(rep(0,n/2), rep(1,n/2))  # treatment assignment
+head(D)
+X<-as.factor(sample(c(1,2,3,4),n,replace=TRUE))  # creates a covariate with 4 levels by taking n samples from the vector c(1,2,3,4) with replacement.
+head(X)
+model<-model.matrix(~ D*X) # creates the model matrix:
+print(head(model))
+betas<-c(-1,0.2,0,0,0,0.4,-0.8,0)  # model coefficients for intercept, D, X2, X3, X4, X2:D, X3:D, X4:D.
+probY<-1/(1+exp(-1*(model %*% betas))) # generates dichotomous y from logistic transformation.
+Y<-rbinom(n,1,probY)
+head(cbind(probY,Y))
+
+```
+
+
+<span style="color:green">BETTER CODE</span>:
+
+```{r eval=FALSE}
+#library(ggplot2)
+#library(plyr)
+#library(reshape2)
+
+set.seed(4319)
+
+n <- 1000  # number of observations
+D <- c(rep(0, n/2), rep(1, n/2))  # treatment assignment
+head(D)
+
+# creates a covariate with 4 levels by taking n samples from the vector c(1,2,3,4) 
+# with replacement.
+X <- as.factor(sample(c(1, 2, 3, 4), n, replace=TRUE))  
+head(X)
+
+# creates the model matrix:
+model <- model.matrix( ~ D * X)
+print(head(model))
+
+# model coefficients for intercept, D, X2, X3, X4, X2:D, X3:D, X4:D.
+betas <- c(-1, 0.2, 0, 0, 0, 0.4, -0.8, 0)  
+
+# generates dichotomous y from logistic transformation.
+probY <- 1 / (1 + exp(-1 * (model %*% betas)))
+Y <- rbinom(n, 1, probY)
+head(cbind(probY, Y))
+
+```
+
+
+## Indentation
+All programming languages use indentation to show which parts of the code are "nested" in other parts. In R Studio and most text editors, you can select a few lines and use tab to move them all right one level, and shift-tab to move them all left one level. 
+
+<span style="color:red">BAD CODE</span>:
+
+```{r eval=FALSE}
+# this loop prints out element i from the vector randomNumbers at each iteration.
+randomNumbers <- round(runif(10, 0, 10), 0)
+for (i in 1:length(randomNumbers)) {
+print(randomNumbers[i])
+}
+
+# this double-loop prints out i, j, and i+j at each iteration.
+for (i in 1:3) {
+for (j in 1:5) {
+print(c(i, j, i+j))
+}
+}
+```
+
+<span style="color:green">BETTER CODE</span>:
+
+```{r eval=FALSE}
+# this loop prints out element i from the vector randomNumbers at each iteration.
+randomNumbers <- round(runif(10, 0, 10), 0)
+for (i in 1:length(randomNumbers)) {
+    print(randomNumbers[i])
+}
+
+# this double-loop prints out i, j, and i+j at each iteration.
+for (i in 1:3) {
+    for (j in 1:5) {
+        print(c(i, j, i+j))
+    }
+}
+```
+
+
+## Comments
+Comments add context to the raw lines of code. They explain the overall flow and strategy of what is going on. Comments point out assumptions or issues that affect a part of the program that are not obvious from the code itself.
+
+As you write larger and more complex pieces of code, comments help you keep track of your own assumptions and ideas as you are building and testing various parts of the code. 
+
+### Variable comments
+Sometimes the meaning of a variable is completely clear just from its name. For a complex variable, there is often extra contextual information about the variable that the code must be consistent about. For instance, if you create a new data vector called `countryPopulation`, you'll want to add a comment describing what its units are (i.e. is it in thousands of people? millions of people?) and if there are any qualifications (i.e. excludes temporary workers). The comment for a variable can capture this extra information about the variable in one place.
+
+### Function comments
+Function comments should describe what the function accomplishes. Emphasize what the function does for the caller, not how it is implemented. The comment should describe what the function does to the receiver object, adding in the role of any parameters. In the standard comment style used with javadoc, the function comment begin with a verb in the third-person singular form (typically ending in "s") describing what the function does. For a complex function, the comment can address the "preconditions" that should be true before the function is called, and the "postconditions" that will be true after it is done.
+
+An example of function commenting is shown below:
+
+```{r eval=FALSE}
+# --------------------------------------------- #
+# FUNCTION: ggplotAMCEs()
+# USAGE: p1 <- ggplotAMCEs(df, coefNames, effect, lowerCI, upperCI, colorFactor, effectName, 
+#   title, ylab, xlimits)
+# ------------ #
+# DESCRIPTION:
+# Takes in a dataframe containing regression results and returns a color-coded dotchart including 
+# errorbars. The function was originally written to display the average marginal component 
+# effects (AMCEs) computed for a conjoint survey experiment using linear regression.
+# 
+# PARAMETERS:
+#   df (dataframe): dataframe containing the regression results.
+#   coefNames (string): column name in df in which the variable names are stored.
+#   effect (string): column name in df in which the coefficients are stored.
+#   lowerCI (string): column name in df in which the lower confidence interval is stored.
+#   upperCI (string): column name in df in which the upper confidence interval is stored.
+#   colorFactor (string): column name in df which groups the coefficients (to be used for coloring 
+#       the plotted lines by group). 
+#   effectName (string): name of the outcome variable (to be used as label for x-axis). 
+#   title (string): plot title. NULL by default.
+#   ylab (string): y-axis label. NULL by default.
+#   xlimits: limits for x-axis
+# 
+# --------------------------------------------- #
+ggplotAMCEs <- function(df, coefNames, effect, lowerCI, upperCI, colorFactor, effectName, title=NULL, ylab=NULL, xlimits) {
+    df <- rbind(df1, df2)
+    plot <- ggplot(df, aes_string(x=effect, y=coefNames, colour=colorFactor)) +
+        facet_grid(attribute~sample, scales="free_y", space="free_y") +
+        geom_vline(xintercept=0, color="gray70", size=0.3, linetype="solid") +
+        geom_point() +
+        geom_errorbarh(data=df, aes_string(x=effect, y=coefNames, xmin=lowerCI, xmax=upperCI, colour=colorFactor),height=0, size=0.4) +
+        scale_x_continuous(name=effectName, limits=xlimits) +  
+        theme(text = element_text(size=10)) + 
+        labs(y=ylab, title=title) +
+        guides(colour=FALSE) + 
+        theme_bw()
+    return(plot)    
+}
+```
+
+<!-- ### Class comments
+Each class should have a comment summarizing what it does. Typically the class comment will mention what sort of data the class encapsulates and what sort of functions it implements. Professional quality documentation for a class or group of classes intended for use by others, such as the String class, will also have a few introductory paragraphs of discussion of what sort of problems the class solves and what typical client use of the class looks like. For a system of classes, there may be an architectural overview that summarizes the role of each class and how they all fit together to build the program.
+ -->
+
+## Write pseudo-code
+
+Often you face complicated multi-step coding problems. Start by writing "pseudo-code" to help you decide how you are going to solve this problem and what functions you are going to want to write. Pseudo-code is not actual lines of R code that could be executed, but often reads like it is. In your pseudo-code, be explicit about what you are trying to achieve with your script and the main steps involved.
+
+## R Basics
+
+### Setting your working directory
+For your own organizational purposes, it will be highly useful to create a folder that contains all the material for this class. For example, my materials for this section are in a folder titled "155B TA Folder" --> "Section" -- "01".
+```{r}
+
+getwd() # gives you your current working directory
+setwd("/Users/haeminjee/Documents/Year 3 Winter Quarter/155B TA Folder/Section/01")
+
+getwd()
+```
+
+## Remove objects
+The `rm` function removes objects in your environment.
+```{r}
+numbers <- c(2, 4, 6, 8)
+rm(numbers)
+
+# removing everything
+rm(list = ls())
+```
+
+## Using Packages
+One of the main advantages of using the R programmning language is the vast number of packages you can access. 
+```{r}
+# use in console
+# install.packages("name of package")
+
+# in R file
+#library(name of library)
+
+```
+
+## Helpful Links and Tips
+When you run into a coding error or bug, the Internet is usually the best place to ask for help. Try Googling your error along with "R". Stackoverflow will be one of your most visited sites. Reading the help files for certain functions or packages will also be helpful. Type in a question mark and the name of the function to access the help file. 
+* https://www.rstudio.com/wp-content/uploads/2015/02/rmarkdown-cheatsheet.pdf (cheat sheet for R markdown)
+* http://swirlstats.com/ (introductory R tutorial if you're just starting out!)
